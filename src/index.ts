@@ -8,6 +8,7 @@ import {
   Tool,
 } from '@modelcontextprotocol/sdk/types.js';
 import { OpenSinceraService } from './opensincera-service.js';
+import { formatPublisherWithDescriptions } from './metadata-descriptions.js';
 import { z } from 'zod';
 
 const server = new Server(
@@ -55,7 +56,15 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
     tools: [
       {
         name: 'get_publisher_metadata',
-        description: 'Get publisher metadata from OpenSincera API. Requires either publisherId or publisherDomain.',
+        description: `Get detailed publisher metadata from OpenSincera API with comprehensive field descriptions. Requires either publisherId or publisherDomain.
+
+Returns publisher information including:
+- Basic Info: Publisher ID, name, domain, status, verification status, contact info, categories
+- Performance Metrics: Ads to Content Ratio (A2CR), Ads in View, Ad Refresh Rate, Page Weight, CPU Usage
+- Supply Chain: Total Supply Paths, Reseller Count, Global Publisher IDs (GPIDs)
+- Identity: ID Absorption Rate
+
+Each metric includes detailed explanations of what it measures and its business implications.`,
         inputSchema: {
           type: 'object',
           properties: {
@@ -85,7 +94,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: 'get_publisher_by_domain',
-        description: 'Get a single publisher by domain name',
+        description: `Get detailed publisher information by domain name with comprehensive metric descriptions. Returns formatted data including performance metrics, supply chain information, and detailed explanations of each field's meaning and business impact.`,
         inputSchema: {
           type: 'object',
           properties: {
@@ -100,7 +109,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: 'get_publisher_by_id',
-        description: 'Get a single publisher by publisher ID',
+        description: `Get detailed publisher information by Publisher ID with comprehensive metric descriptions. Returns formatted data including performance metrics, supply chain information, and detailed explanations of each field's meaning and business impact.`,
         inputSchema: {
           type: 'object',
           properties: {
@@ -132,40 +141,82 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case 'get_publisher_metadata': {
         const input = GetPublisherMetadataSchema.parse(request.params.arguments);
         const result = await openSinceraService.getPublisherMetadata(input);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
-        };
+
+        if (result.publishers.length > 0) {
+          const formattedPublishers = result.publishers.map(pub =>
+            formatPublisherWithDescriptions(pub, 'en')
+          ).join('\n\n---\n\n');
+
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Found ${result.totalCount} publisher(s):\n\n${formattedPublishers}`,
+              },
+            ],
+          };
+        } else {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: 'No publishers found matching the criteria.',
+              },
+            ],
+          };
+        }
       }
 
       case 'get_publisher_by_domain': {
         const input = GetPublisherByDomainSchema.parse(request.params.arguments);
         const result = await openSinceraService.getPublisherByDomain(input.domain);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
-        };
+
+        if (result) {
+          const formatted = formatPublisherWithDescriptions(result, 'en');
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatted,
+              },
+            ],
+          };
+        } else {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `No publisher found for domain: ${input.domain}`,
+              },
+            ],
+          };
+        }
       }
 
       case 'get_publisher_by_id': {
         const input = GetPublisherByIdSchema.parse(request.params.arguments);
         const result = await openSinceraService.getPublisherById(input.publisherId);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
-        };
+
+        if (result) {
+          const formatted = formatPublisherWithDescriptions(result, 'en');
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatted,
+              },
+            ],
+          };
+        } else {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `No publisher found for ID: ${input.publisherId}`,
+              },
+            ],
+          };
+        }
       }
 
       case 'health_check': {
