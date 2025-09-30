@@ -84,6 +84,64 @@ Add the following to your Claude Desktop configuration file:
 }
 ```
 
+### Example Prompts for Claude Desktop
+
+Once configured, you can use these natural language prompts in Claude Desktop:
+
+#### Basic Health Check
+```
+Check the OpenSincera API connection status
+```
+
+#### Publisher Domain Lookup
+```
+Get publisher information for yahoo.com from OpenSincera
+```
+
+#### Detailed Analysis Request
+```
+Analyze the publisher metrics for cnn.com and explain:
+- Their verification status
+- Ad to content ratio and what it means
+- Supply chain complexity
+- Overall advertising quality
+```
+
+#### Multiple Domain Comparison
+```
+Compare the following publishers using OpenSincera data:
+- nytimes.com
+- washingtonpost.com
+- reuters.com
+
+Focus on their verification status, ad quality metrics, and supply chain efficiency.
+```
+
+#### Publisher ID Lookup
+```
+Get detailed information for OpenSincera Publisher ID 2737
+```
+
+#### Targeted Metric Analysis
+```
+For the domain example.com, explain:
+- What is their ID Absorption Rate and why does it matter?
+- How does their page weight affect ad performance?
+- Are they using too many resellers?
+```
+
+#### Business Context Questions
+```
+I'm considering running ad campaigns on forbes.com.
+Can you check their OpenSincera profile and tell me:
+- Is this a verified publisher?
+- What's their ad refresh rate and is it good or bad?
+- How many supply paths do they have?
+- Would you recommend this publisher for quality ad placement?
+```
+
+These prompts will automatically trigger the appropriate OpenSincera MCP tools and return formatted responses with detailed metric explanations.
+
 ## Available Tools
 
 ### get_publisher_metadata
