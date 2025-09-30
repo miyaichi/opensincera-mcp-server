@@ -25,7 +25,7 @@ OpenSincera is a platform that provides transparency and verification data for d
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/opensincera-mcp-server.git
+git clone https://github.com/miyaichi/opensincera-mcp-server.git
 cd opensincera-mcp-server
 ```
 
