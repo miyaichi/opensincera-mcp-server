@@ -276,8 +276,9 @@ The server provides comprehensive error handling for common scenarios:
 
 ```
 src/
-├── index.ts              # Main MCP server entry point
-└── opensincera-service.ts # OpenSincera API service implementation
+├── index.ts                 # Main MCP server entry point
+├── metadata-descriptions.ts # Descriptions for metadata fields
+└── opensincera-service.ts   # OpenSincera API service implementation
 ```
 
 ## Contributing
