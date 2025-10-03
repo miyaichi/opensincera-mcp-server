@@ -16,6 +16,12 @@ OpenSincera is a platform that provides transparency and verification data for d
 
 ## Installation
 
+Install the package globally using npm:
+
+```bash
+npm install -g opensincera-mcp-server
+```
+
 ### Prerequisites
 
 - Node.js 18.0.0 or higher
@@ -62,13 +68,32 @@ npm run dev
 
 ### Configuration with Claude Desktop
 
-Add the following to your Claude Desktop configuration file:
+Add the following to your Claude Desktop configuration file, depending on your installation method.
 
-#### macOS
-`~/Library/Application Support/Claude/claude_desktop_config.json`
+The file is located at:
+- **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Windows**: `%APPDATA%/Claude/claude_desktop_config.json`
 
-#### Windows
-`%APPDATA%/Claude/claude_desktop_config.json`
+#### Option 1: If installed globally
+
+If you installed the package globally via `npm install -g`, the command is directly available in your system's path.
+
+```json
+{
+  "mcpServers": {
+    "opensincera": {
+      "command": "opensincera-mcp-server",
+      "env": {
+        "OPENSINCERA_API_KEY": "your-api-key-here"
+      }
+    }
+  }
+}
+```
+
+#### Option 2: If using a local clone
+
+If you cloned the repository locally, you must provide the full path to the script. **Remember to replace `/path/to/` with the actual absolute path to the project directory.**
 
 ```json
 {
