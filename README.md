@@ -2,6 +2,10 @@
 
 A Model Context Protocol (MCP) server that provides access to the OpenSincera API for retrieving publisher metadata and verification information.
 
+<a href="https://glama.ai/mcp/servers/@miyaichi/opensincera-mcp-server">
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/@miyaichi/opensincera-mcp-server/badge" alt="OpenSincera Server MCP server" />
+</a>
+
 ## Overview
 
 OpenSincera is a platform that provides transparency and verification data for digital advertising publishers. This MCP server allows AI assistants and other tools to access OpenSincera's publisher information, including verification status, metadata, and operational metrics.
