@@ -24,17 +24,16 @@ const server = new Server(
 );
 
 // Input validation schemas
-const GetPublisherMetadataSchema = z.object({
-  publisherId: z.string().optional(),
-  publisherDomain: z.string().optional(),
-  limit: z.number().min(1).max(100).optional(),
-  offset: z.number().min(0).optional(),
-}).refine(
-  data => data.publisherId || data.publisherDomain,
-  {
-    message: "Either publisherId or publisherDomain must be provided",
-  }
-);
+const GetPublisherMetadataSchema = z
+  .object({
+    publisherId: z.string().optional(),
+    publisherDomain: z.string().optional(),
+    limit: z.number().min(1).max(100).optional(),
+    offset: z.number().min(0).optional(),
+  })
+  .refine((data) => data.publisherId || data.publisherDomain, {
+    message: 'Either publisherId or publisherDomain must be provided',
+  });
 
 const GetPublisherByDomainSchema = z.object({
   domain: z.string().min(1),
@@ -143,9 +142,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const result = await openSinceraService.getPublisherMetadata(input);
 
         if (result.publishers.length > 0) {
-          const formattedPublishers = result.publishers.map(pub =>
-            formatPublisherWithDescriptions(pub, 'en')
-          ).join('\n\n---\n\n');
+          const formattedPublishers = result.publishers
+            .map((pub) => formatPublisherWithDescriptions(pub, 'en'))
+            .join('\n\n---\n\n');
 
           return {
             content: [
@@ -225,7 +224,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           content: [
             {
               type: 'text',
-              text: JSON.stringify({ healthy: result, timestamp: new Date().toISOString() }, null, 2),
+              text: JSON.stringify(
+                { healthy: result, timestamp: new Date().toISOString() },
+                null,
+                2
+              ),
             },
           ],
         };
