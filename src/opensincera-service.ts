@@ -17,12 +17,15 @@ export interface GetPublisherMetadataRequest {
 export interface PublisherMetadata {
   publisherId: string;
   publisherName: string;
-  publisherDomain: string;
+  ownerDomain: string;
+  domain?: string;
   status: 'active' | 'inactive' | 'suspended';
   lastUpdated: string;
   contactEmail?: string;
   categories: string[];
   verificationStatus: 'verified' | 'unverified' | 'pending';
+  parentEntityId?: number;
+  similarPublishers?: number[];
   metadata?: {
     description?: string;
     primarySupplyType?: string;
@@ -163,7 +166,8 @@ export class OpenSinceraService {
           const mappedPublisher: PublisherMetadata = {
             publisherId: publisherData.publisher_id || publisherData.id || '',
             publisherName: publisherData.name || '',
-            publisherDomain: publisherData.owner_domain || request.publisherDomain || '',
+            ownerDomain: publisherData.owner_domain || request.publisherDomain || '',
+            domain: publisherData.domain,
             status: this.mapStatus(publisherData.status),
             lastUpdated: publisherData.updated_at || new Date().toISOString(),
             contactEmail: publisherData.contact_email,
@@ -171,6 +175,8 @@ export class OpenSinceraService {
               ? publisherData.categories
               : publisherData.categories?.split(';') || [],
             verificationStatus: publisherData.visit_enabled ? 'verified' : 'unverified',
+            parentEntityId: publisherData.parent_entity_id,
+            similarPublishers: publisherData.similar_publishers?.content,
             metadata: {
               description: publisherData.pub_description,
               primarySupplyType: publisherData.primary_supply_type,

@@ -17,9 +17,9 @@ export const metadataDescriptions: Record<string, FieldDescription> = {
     en: 'Display name of the publisher or website',
     ja: 'パブリッシャーまたはウェブサイトの表示名',
   },
-  publisherDomain: {
-    en: 'Primary domain associated with the publisher',
-    ja: 'パブリッシャーに関連付けられたプライマリドメイン',
+  ownerDomain: {
+    en: "Owner domain as defined in ads.txt specification (OWNERDOMAIN). This should match the sellers.domain in the publisher's sellers.json entries and represents the Public Suffix List+1 format (e.g., example.com). It identifies the entity that owns the advertising inventory.",
+    ja: 'ads.txt仕様で定義されたオーナードメイン（OWNERDOMAIN）。パブリッシャーのsellers.jsonエントリのsellers.domainと一致する必要があり、Public Suffix List+1形式（例：example.com）で表されます。広告インベントリを所有するエンティティを識別します。',
   },
   status: {
     en: 'Current operational status of the publisher account',
@@ -88,6 +88,18 @@ export const metadataDescriptions: Record<string, FieldDescription> = {
   slug: {
     en: 'URL-friendly identifier or slug for the publisher.',
     ja: 'パブリッシャーのURL対応識別子またはスラッグ。',
+  },
+  domain: {
+    en: 'The actual domain where the ads.txt file is hosted. This may be a subdomain or different from the owner domain in cases where the publisher operates multiple properties or uses subdomains for different content sections.',
+    ja: 'ads.txtファイルが実際にホストされているドメイン。パブリッシャーが複数のプロパティを運営している場合や、異なるコンテンツセクションにサブドメインを使用している場合、オーナードメインとは異なるサブドメインである可能性があります。',
+  },
+  parentEntityId: {
+    en: 'The identifier of the parent entity that owns or controls this publisher. This is useful for understanding corporate relationships and ownership structures in the advertising ecosystem.',
+    ja: 'このパブリッシャーを所有または管理する親エンティティの識別子。広告エコシステムにおける企業関係や所有構造を理解するのに役立ちます。',
+  },
+  similarPublishers: {
+    en: 'A curated list of publishers that OpenSincera considers similar to the current publisher, based on shared attributes (e.g., content category/editorial focus) and observed supply-side patterns.\n\nThis list is meant for contextual benchmarking—not a definitive competitor set. Use it to compare key signals across comparable publishers and to interpret a publisher’s metrics in a relevant market/content context.',
+    ja: 'OpenSincera が、コンテンツカテゴリ／編集方針などの属性や、サプライ側で観測される傾向（供給パターン）にもとづいて「類似」と判断したパブリッシャーの一覧です。\n\nこれは競合一覧の確定版ではなく、文脈的なベンチマークのためのリストです。近い特性を持つパブリッシャー群と Key Signals を比較し、対象パブリッシャーの指標を同じ市場・同じコンテンツ文脈で解釈するために使います。',
   },
 };
 
@@ -172,9 +184,15 @@ export function formatPublisherWithDescriptions(
   lines.push(`  ${getFieldDescription('publisherId', language)}`);
   lines.push('');
 
-  lines.push(`- **Domain**: ${publisher.publisherDomain}`);
-  lines.push(`  ${getFieldDescription('publisherDomain', language)}`);
+  lines.push(`- **Owner Domain**: ${publisher.ownerDomain}`);
+  lines.push(`  ${getFieldDescription('ownerDomain', language)}`);
   lines.push('');
+
+  if (publisher.domain) {
+    lines.push(`- **Domain**: ${publisher.domain}`);
+    lines.push(`  ${getFieldDescription('domain', language)}`);
+    lines.push('');
+  }
 
   lines.push(`- **Status**: ${publisher.status}`);
   lines.push(`  ${getStatusDescription(publisher.status, language)}`);
@@ -199,6 +217,18 @@ export function formatPublisherWithDescriptions(
   lines.push(`- **Last Updated**: ${publisher.lastUpdated}`);
   lines.push(`  ${getFieldDescription('lastUpdated', language)}`);
   lines.push('');
+
+  if (publisher.parentEntityId) {
+    lines.push(`- **Parent Entity ID**: ${publisher.parentEntityId}`);
+    lines.push(`  ${getFieldDescription('parentEntityId', language)}`);
+    lines.push('');
+  }
+
+  if (publisher.similarPublishers && publisher.similarPublishers.length > 0) {
+    lines.push(`- **Similar Publishers**: ${publisher.similarPublishers.join(', ')}`);
+    lines.push(`  ${getFieldDescription('similarPublishers', language)}`);
+    lines.push('');
+  }
 
   // Metadata
   if (publisher.metadata) {

@@ -232,12 +232,15 @@ Check the health status of the OpenSincera API connection.
     {
       "publisherId": "12345",
       "publisherName": "Example Publisher",
-      "publisherDomain": "example.com",
+      "ownerDomain": "example.com",
+      "domain": "example.com",
       "status": "active",
       "lastUpdated": "2023-12-01T10:00:00Z",
       "contactEmail": "contact@example.com",
       "categories": ["News", "Entertainment"],
       "verificationStatus": "verified",
+      "parentEntityId": 12345,
+      "similarPublishers": [36, 75, 103, 121, 122],
       "metadata": {
         "description": "A leading news publisher",
         "primarySupplyType": "direct",
