@@ -9,6 +9,7 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { OpenSinceraService } from './opensincera-service.js';
 import { formatPublisherWithDescriptions } from './metadata-descriptions.js';
+import { buildComparisonReport, scorePublisher, buildEvaluationReport, ScoredPublisher } from './analysis.js';
 import { z } from 'zod';
 
 const server = new Server(
@@ -41,6 +42,16 @@ const GetPublisherByDomainSchema = z.object({
 
 const GetPublisherByIdSchema = z.object({
   publisherId: z.string().min(1),
+});
+
+const ComparePublishersSchema = z.object({
+  domain: z.string().min(1),
+});
+
+const EvaluateMediaSchema = z.object({
+  domains: z.array(z.string().min(1)).min(1),
+  campaignGoal: z.enum(['branding', 'performance', 'balanced']).optional().default('balanced'),
+  language: z.enum(['en', 'ja']).optional().default('en'),
 });
 
 // Initialize OpenSincera service
@@ -118,6 +129,47 @@ Each metric includes detailed explanations of what it measures and its business 
             },
           },
           required: ['publisherId'],
+          additionalProperties: false,
+        },
+      },
+      {
+        name: 'compare_publishers',
+        description: `Compare a publisher against its similar publishers (competitive benchmark). Retrieves the target publisher's data and its similar publishers, then generates a side-by-side comparison of key metrics: A2CR, Ads in View, Ad Refresh, Page Weight, CPU Usage, Supply Paths, Reseller Count, ID Absorption Rate, and Unique GPIDs.`,
+        inputSchema: {
+          type: 'object',
+          properties: {
+            domain: {
+              type: 'string',
+              description: 'Your publisher domain to benchmark',
+            },
+          },
+          required: ['domain'],
+          additionalProperties: false,
+        },
+      },
+      {
+        name: 'evaluate_media',
+        description: `Evaluate and rank multiple publisher domains for advertiser media selection. Scores each publisher (0-100) based on ad quality metrics, supply chain health, and identity coverage. Supports campaign goal weighting (branding vs performance) and bilingual output (en/ja).`,
+        inputSchema: {
+          type: 'object',
+          properties: {
+            domains: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'List of publisher domains to evaluate',
+            },
+            campaignGoal: {
+              type: 'string',
+              enum: ['branding', 'performance', 'balanced'],
+              description: 'Campaign objective for weight adjustment. Default: balanced',
+            },
+            language: {
+              type: 'string',
+              enum: ['en', 'ja'],
+              description: 'Output language. Default: en',
+            },
+          },
+          required: ['domains'],
           additionalProperties: false,
         },
       },
@@ -216,6 +268,50 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             ],
           };
         }
+      }
+
+      case 'compare_publishers': {
+        const input = ComparePublishersSchema.parse(request.params.arguments);
+        const self = await openSinceraService.getPublisherByDomain(input.domain);
+        if (!self) {
+          return { content: [{ type: 'text', text: `No publisher found for domain: ${input.domain}` }] };
+        }
+        const similarIds = self.similarPublishers;
+        if (!similarIds || similarIds.length === 0) {
+          return { content: [{ type: 'text', text: `No similar publishers found for ${input.domain}. The similarPublishers field is empty.` }] };
+        }
+        const peerResults = await Promise.allSettled(
+          similarIds.map(id => openSinceraService.getPublisherById(String(id)))
+        );
+        const peers = peerResults
+          .filter((r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled' && r.value != null)
+          .map(r => r.value);
+        if (peers.length === 0) {
+          return { content: [{ type: 'text', text: `Could not retrieve any similar publisher data for ${input.domain}.` }] };
+        }
+        const report = buildComparisonReport(self, peers);
+        return { content: [{ type: 'text', text: report }] };
+      }
+
+      case 'evaluate_media': {
+        const input = EvaluateMediaSchema.parse(request.params.arguments);
+        const results = await Promise.allSettled(
+          input.domains.map(d => openSinceraService.getPublisherByDomain(d))
+        );
+        const scored: ScoredPublisher[] = [];
+        const skipped: string[] = [];
+        results.forEach((r, i) => {
+          if (r.status === 'fulfilled' && r.value != null) {
+            scored.push(scorePublisher(r.value, input.campaignGoal));
+          } else {
+            skipped.push(input.domains[i]);
+          }
+        });
+        if (scored.length === 0) {
+          return { content: [{ type: 'text', text: 'Could not retrieve data for any of the specified domains.' }] };
+        }
+        const report = buildEvaluationReport(scored, skipped, input.campaignGoal, input.language);
+        return { content: [{ type: 'text', text: report }] };
       }
 
       case 'health_check': {
