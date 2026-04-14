@@ -1,15 +1,18 @@
 # OpenSincera MCP Server
 
-A Model Context Protocol (MCP) server that provides access to the OpenSincera API for retrieving publisher metadata and verification information.
+A Model Context Protocol (MCP) server that provides access to the OpenSincera API for retrieving publisher metadata, verification information, and advertising quality analytics.
 
 ## Overview
 
-OpenSincera is a platform that provides transparency and verification data for digital advertising publishers. This MCP server allows AI assistants and other tools to access OpenSincera's publisher information, including verification status, metadata, and operational metrics.
+OpenSincera is a platform that provides transparency and verification data for digital advertising publishers. This MCP server allows AI assistants and other tools to access OpenSincera's publisher information, including verification status, metadata, operational metrics, device-level ad quality signals, and competitive benchmarking.
 
 ## Features
 
 - **Publisher Lookup**: Search for publishers by domain or Publisher ID
-- **Metadata Retrieval**: Get detailed publisher information including verification status, categories, and operational data
+- **Metadata Retrieval**: Get detailed publisher information including verification status, categories, and operational metrics
+- **Device-Level Metrics**: Compare mobile vs. desktop A2CR, ads in view, ad refresh rates, and more
+- **Competitive Benchmarking**: Compare a publisher against similar publishers side-by-side
+- **Media Evaluation**: Score and rank multiple publishers for advertiser media selection
 - **Health Monitoring**: Check the status of the OpenSincera API connection
 - **Error Handling**: Comprehensive error handling with detailed error messages
 - **Input Validation**: Robust input validation using Zod schemas
@@ -132,27 +135,28 @@ Analyze the publisher metrics for cnn.com and explain:
 - Overall advertising quality
 ```
 
-#### Multiple Domain Comparison
+#### Device-Level Comparison
 ```
-Compare the following publishers using OpenSincera data:
+Show me the mobile vs desktop ad quality metrics for nytimes.com
+```
+
+#### Competitive Benchmarking
+```
+Compare businessinsider.com against its similar publishers
+```
+
+#### Mobile-Focused Media Evaluation
+```
+Evaluate these publishers for a mobile branding campaign:
 - nytimes.com
 - washingtonpost.com
 - reuters.com
-
-Focus on their verification status, ad quality metrics, and supply chain efficiency.
+Use device: mobile
 ```
 
 #### Publisher ID Lookup
 ```
 Get detailed information for OpenSincera Publisher ID 2737
-```
-
-#### Targeted Metric Analysis
-```
-For the domain example.com, explain:
-- What is their ID Absorption Rate and why does it matter?
-- How does their page weight affect ad performance?
-- Are they using too many resellers?
 ```
 
 #### Business Context Questions
@@ -216,6 +220,41 @@ Get a single publisher by Publisher ID.
 }
 ```
 
+### compare_publishers
+
+Compare a publisher against its similar publishers (competitive benchmark). Retrieves the target publisher and its OpenSincera-curated similar publishers, then generates a side-by-side comparison of key metrics.
+
+**Parameters:**
+- `domain` (required): Publisher domain to benchmark
+- `device` (optional): Device type to use for metric comparison — `overall` (default), `mobile`, or `desktop`
+
+**Example:**
+```json
+{
+  "domain": "businessinsider.com",
+  "device": "mobile"
+}
+```
+
+### evaluate_media
+
+Score and rank multiple publisher domains for advertiser media selection. Each publisher receives a score (0–100) based on ad quality metrics, supply chain health, and identity coverage, weighted by campaign goal.
+
+**Parameters:**
+- `domains` (required): List of publisher domains to evaluate
+- `campaignGoal` (optional): `branding`, `performance`, or `balanced` (default)
+- `language` (optional): Output language — `en` (default) or `ja`
+- `device` (optional): Device type to use for scoring — `overall` (default), `mobile`, or `desktop`
+
+**Example:**
+```json
+{
+  "domains": ["nytimes.com", "washingtonpost.com", "reuters.com"],
+  "campaignGoal": "branding",
+  "device": "desktop"
+}
+```
+
 ### health_check
 
 Check the health status of the OpenSincera API connection.
@@ -230,30 +269,53 @@ Check the health status of the OpenSincera API connection.
 {
   "publishers": [
     {
-      "publisherId": "12345",
-      "publisherName": "Example Publisher",
-      "ownerDomain": "example.com",
-      "domain": "example.com",
+      "publisherId": "1",
+      "publisherName": "Business Insider",
+      "ownerDomain": "insider-inc.com",
+      "domain": "businessinsider.com",
       "status": "active",
-      "lastUpdated": "2023-12-01T10:00:00Z",
-      "contactEmail": "contact@example.com",
-      "categories": ["News", "Entertainment"],
+      "lastUpdated": "2026-04-14T01:00:25.419Z",
+      "categories": [],
       "verificationStatus": "verified",
-      "parentEntityId": 12345,
-      "similarPublishers": [36, 75, 103, 121, 122],
+      "parentEntityId": 59072,
+      "similarPublishers": [41, 67, 405],
+      "deviceMetrics": {
+        "mobile": {
+          "avgAdsToContentRatio": 0.265,
+          "maxAdsToContentRatio": 1.0,
+          "minAdsToContentRatio": 0.0,
+          "avgAdUnitsInView": 1.611,
+          "maxAdUnitsInView": 4.0,
+          "averageRefreshRate": 58.441,
+          "maxRefreshRate": 420.0,
+          "minRefreshRate": 5.0,
+          "percentageOfAdSlotsWithRefresh": 98.78
+        },
+        "desktop": {
+          "avgAdsToContentRatio": 0.231,
+          "maxAdsToContentRatio": 1.0,
+          "minAdsToContentRatio": 0.0,
+          "avgAdUnitsInView": 2.577,
+          "maxAdUnitsInView": 9.0,
+          "averageRefreshRate": 81.096,
+          "maxRefreshRate": 590.0,
+          "minRefreshRate": 5.0,
+          "percentageOfAdSlotsWithRefresh": 84.99
+        }
+      },
       "metadata": {
-        "description": "A leading news publisher",
-        "primarySupplyType": "direct",
-        "avgAdsToContentRatio": 0.25,
-        "avgAdsInView": 3.2,
-        "avgAdRefresh": 1.5,
-        "totalUniqueGpids": 150,
-        "idAbsorptionRate": 0.85,
-        "avgPageWeight": 2048,
-        "avgCpu": 15.5,
-        "totalSupplyPaths": 12,
-        "resellerCount": 8,
-        "slug": "example-publisher"
+        "description": "Business Insider tells the global tech, finance...",
+        "primarySupplyType": "web",
+        "avgAdsToContentRatio": 0.249,
+        "avgAdsInView": 2.088,
+        "avgAdRefresh": 72.489,
+        "totalUniqueGpids": 946,
+        "idAbsorptionRate": 0.5,
+        "avgPageWeight": 27.843,
+        "avgCpu": 254.671,
+        "totalSupplyPaths": 118,
+        "resellerCount": 69,
+        "slug": "business-insider"
       }
     }
   ],
@@ -267,7 +329,7 @@ Check the health status of the OpenSincera API connection.
 ```json
 {
   "healthy": true,
-  "timestamp": "2023-12-01T10:00:00Z"
+  "timestamp": "2026-04-14T10:00:00Z"
 }
 ```
 
@@ -304,9 +366,10 @@ The server provides comprehensive error handling for common scenarios:
 
 ```
 src/
-├── index.ts                 # Main MCP server entry point
-├── metadata-descriptions.ts # Descriptions for metadata fields
-└── opensincera-service.ts   # OpenSincera API service implementation
+├── index.ts                 # Main MCP server entry point and tool definitions
+├── opensincera-service.ts   # OpenSincera API client and data models
+├── metadata-descriptions.ts # Field descriptions and formatted output
+└── analysis.ts              # Scoring, comparison, and evaluation logic
 ```
 
 ## Contributing
@@ -329,6 +392,20 @@ For issues related to this MCP server, please open an issue on GitHub.
 For OpenSincera API issues, please contact OpenSincera support directly.
 
 ## Changelog
+
+### v1.0.4
+- Added `device_level_metrics` support: mobile and desktop breakdowns for A2CR, ads in view, ad refresh rate (avg/min/max), and percentage of ad slots with refresh
+- Added `compare_publishers` tool: side-by-side competitive benchmark against similar publishers
+- Added `evaluate_media` tool: score and rank multiple publishers by campaign goal (branding/performance/balanced)
+- Added `device` parameter to `compare_publishers` and `evaluate_media` for mobile/desktop-specific analysis
+- Added `analysis.ts` module for scoring and reporting logic
+
+### v1.0.3
+- Added publisher comparison and rating features
+- Updated publisher metadata structure with `owner_domain`, `domain`, `parent_entity_id`, and `similar_publishers`
+
+### v1.0.2
+- Version bump and stability improvements
 
 ### v1.0.0
 - Initial release

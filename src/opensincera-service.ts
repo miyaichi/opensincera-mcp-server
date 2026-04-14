@@ -14,6 +14,18 @@ export interface GetPublisherMetadataRequest {
   offset?: number;
 }
 
+export interface DeviceLevelMetrics {
+  avgAdsToContentRatio?: number;
+  maxAdsToContentRatio?: number;
+  minAdsToContentRatio?: number;
+  avgAdUnitsInView?: number;
+  maxAdUnitsInView?: number;
+  averageRefreshRate?: number;
+  maxRefreshRate?: number;
+  minRefreshRate?: number;
+  percentageOfAdSlotsWithRefresh?: number;
+}
+
 export interface PublisherMetadata {
   publisherId: string;
   publisherName: string;
@@ -26,6 +38,10 @@ export interface PublisherMetadata {
   verificationStatus: 'verified' | 'unverified' | 'pending';
   parentEntityId?: number;
   similarPublishers?: number[];
+  deviceMetrics?: {
+    mobile?: DeviceLevelMetrics;
+    desktop?: DeviceLevelMetrics;
+  };
   metadata?: {
     description?: string;
     primarySupplyType?: string;
@@ -163,6 +179,21 @@ export class OpenSinceraService {
         }
 
         if (publisherData) {
+          const mapDeviceMetrics = (d: any): DeviceLevelMetrics | undefined => {
+            if (!d) return undefined;
+            return {
+              avgAdsToContentRatio: d.avg_ads_to_content_ratio ?? undefined,
+              maxAdsToContentRatio: d.max_ads_to_content_ratio ?? undefined,
+              minAdsToContentRatio: d.min_ads_to_content_ratio ?? undefined,
+              avgAdUnitsInView: d.avg_ad_units_in_view ?? undefined,
+              maxAdUnitsInView: d.max_ad_units_in_view ?? undefined,
+              averageRefreshRate: d.average_refresh_rate ?? undefined,
+              maxRefreshRate: d.max_refresh_rate ?? undefined,
+              minRefreshRate: d.min_refresh_rate ?? undefined,
+              percentageOfAdSlotsWithRefresh: d.percentage_of_ad_slots_with_refresh ?? undefined,
+            };
+          };
+
           const mappedPublisher: PublisherMetadata = {
             publisherId: publisherData.publisher_id || publisherData.id || '',
             publisherName: publisherData.name || '',
@@ -177,6 +208,12 @@ export class OpenSinceraService {
             verificationStatus: publisherData.visit_enabled ? 'verified' : 'unverified',
             parentEntityId: publisherData.parent_entity_id,
             similarPublishers: publisherData.similar_publishers?.content,
+            deviceMetrics: publisherData.device_level_metrics
+              ? {
+                  mobile: mapDeviceMetrics(publisherData.device_level_metrics.mobile),
+                  desktop: mapDeviceMetrics(publisherData.device_level_metrics.desktop),
+                }
+              : undefined,
             metadata: {
               description: publisherData.pub_description,
               primarySupplyType: publisherData.primary_supply_type,

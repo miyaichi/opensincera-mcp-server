@@ -1,4 +1,54 @@
-import { PublisherMetadata } from './opensincera-service.js';
+import { PublisherMetadata, DeviceLevelMetrics } from './opensincera-service.js';
+
+export type DeviceTarget = 'overall' | 'mobile' | 'desktop';
+
+// ============================================================
+// Device-level metric resolution helpers
+// ============================================================
+
+/**
+ * Returns device-level values for the three metrics shared with the top-level,
+ * or falls back to the overall metadata values when not available.
+ */
+function resolveMetrics(p: PublisherMetadata, device: DeviceTarget): {
+  avgAdsToContentRatio?: number;
+  avgAdsInView?: number;
+  avgAdRefresh?: number;
+  avgPageWeight?: number;
+  avgCpu?: number;
+  totalSupplyPaths?: number;
+  resellerCount?: number;
+  idAbsorptionRate?: number;
+  totalUniqueGpids?: number;
+} {
+  const overall = p.metadata ?? {};
+  if (device === 'overall' || !p.deviceMetrics) {
+    return {
+      avgAdsToContentRatio: overall.avgAdsToContentRatio,
+      avgAdsInView: overall.avgAdsInView,
+      avgAdRefresh: overall.avgAdRefresh,
+      avgPageWeight: overall.avgPageWeight,
+      avgCpu: overall.avgCpu,
+      totalSupplyPaths: overall.totalSupplyPaths,
+      resellerCount: overall.resellerCount,
+      idAbsorptionRate: overall.idAbsorptionRate,
+      totalUniqueGpids: overall.totalUniqueGpids,
+    };
+  }
+  const dm: DeviceLevelMetrics | undefined = p.deviceMetrics[device];
+  return {
+    avgAdsToContentRatio: dm?.avgAdsToContentRatio ?? overall.avgAdsToContentRatio,
+    avgAdsInView: dm?.avgAdUnitsInView ?? overall.avgAdsInView,
+    avgAdRefresh: dm?.averageRefreshRate ?? overall.avgAdRefresh,
+    // page weight and CPU are overall-only
+    avgPageWeight: overall.avgPageWeight,
+    avgCpu: overall.avgCpu,
+    totalSupplyPaths: overall.totalSupplyPaths,
+    resellerCount: overall.resellerCount,
+    idAbsorptionRate: overall.idAbsorptionRate,
+    totalUniqueGpids: overall.totalUniqueGpids,
+  };
+}
 
 // ============================================================
 // compare_publishers helpers
@@ -6,27 +56,27 @@ import { PublisherMetadata } from './opensincera-service.js';
 
 interface MetricDef {
   label: string;
-  key: string;
-  extract: (p: PublisherMetadata) => number | undefined;
+  key: keyof ReturnType<typeof resolveMetrics>;
   lowerIsBetter: boolean;
   format?: (v: number) => string;
 }
 
 const COMPARE_METRICS: MetricDef[] = [
-  { label: 'A2CR', key: 'a2cr', extract: p => p.metadata?.avgAdsToContentRatio, lowerIsBetter: true, format: v => v.toFixed(2) },
-  { label: 'Ads in View', key: 'aiv', extract: p => p.metadata?.avgAdsInView, lowerIsBetter: true, format: v => v.toFixed(1) },
-  { label: 'Ad Refresh (s)', key: 'adr', extract: p => p.metadata?.avgAdRefresh, lowerIsBetter: false, format: v => v.toFixed(1) },
-  { label: 'Page Weight', key: 'pw', extract: p => p.metadata?.avgPageWeight, lowerIsBetter: true, format: v => v.toFixed(0) },
-  { label: 'CPU Usage', key: 'cpu', extract: p => p.metadata?.avgCpu, lowerIsBetter: true, format: v => v.toFixed(1) },
-  { label: 'Total Supply Paths', key: 'sp', extract: p => p.metadata?.totalSupplyPaths, lowerIsBetter: true, format: v => v.toFixed(0) },
-  { label: 'Reseller Count', key: 'rc', extract: p => p.metadata?.resellerCount, lowerIsBetter: true, format: v => v.toFixed(0) },
-  { label: 'ID Absorption Rate', key: 'idar', extract: p => p.metadata?.idAbsorptionRate, lowerIsBetter: false, format: v => (v * 100).toFixed(1) + '%' },
-  { label: 'Total Unique GPIDs', key: 'gpids', extract: p => p.metadata?.totalUniqueGpids, lowerIsBetter: false, format: v => v.toFixed(0) },
+  { label: 'A2CR', key: 'avgAdsToContentRatio', lowerIsBetter: true, format: v => v.toFixed(2) },
+  { label: 'Ads in View', key: 'avgAdsInView', lowerIsBetter: true, format: v => v.toFixed(1) },
+  { label: 'Ad Refresh (s)', key: 'avgAdRefresh', lowerIsBetter: false, format: v => v.toFixed(1) },
+  { label: 'Page Weight', key: 'avgPageWeight', lowerIsBetter: true, format: v => v.toFixed(0) },
+  { label: 'CPU Usage', key: 'avgCpu', lowerIsBetter: true, format: v => v.toFixed(1) },
+  { label: 'Total Supply Paths', key: 'totalSupplyPaths', lowerIsBetter: true, format: v => v.toFixed(0) },
+  { label: 'Reseller Count', key: 'resellerCount', lowerIsBetter: true, format: v => v.toFixed(0) },
+  { label: 'ID Absorption Rate', key: 'idAbsorptionRate', lowerIsBetter: false, format: v => (v * 100).toFixed(1) + '%' },
+  { label: 'Total Unique GPIDs', key: 'totalUniqueGpids', lowerIsBetter: false, format: v => v.toFixed(0) },
 ];
 
 export function buildComparisonReport(
   self: PublisherMetadata,
-  peers: PublisherMetadata[]
+  peers: PublisherMetadata[],
+  device: DeviceTarget = 'overall'
 ): string {
   const all = [self, ...peers];
   const names = all.map(p => p.publisherName || p.ownerDomain || p.publisherId);
@@ -35,13 +85,16 @@ export function buildComparisonReport(
   let md = `# Competitive Benchmark Report\n\n`;
   md += `**Your Publisher:** ${names[0]} (${self.ownerDomain})\n\n`;
   md += `**Compared with:** ${peers.length} similar publisher(s)\n\n`;
+  if (device !== 'overall') {
+    md += `**Device:** ${device}\n\n`;
+  }
 
   // Table header
-  md += '| Metric | ' + names.map(n => n.substring(0, 20)) .join(' | ') + ' | Your Rank |\n';
+  md += '| Metric | ' + names.map(n => n.substring(0, 20)).join(' | ') + ' | Your Rank |\n';
   md += '|' + '---|'.repeat(names.length + 2) + '\n';
 
   for (const m of COMPARE_METRICS) {
-    const vals = all.map(p => m.extract(p));
+    const vals = all.map(p => resolveMetrics(p, device)[m.key]);
     const selfVal = vals[0];
     const fmt = m.format || ((v: number) => String(v));
 
@@ -72,9 +125,8 @@ export function buildComparisonReport(
 type CampaignGoal = 'branding' | 'performance' | 'balanced';
 
 interface MetricWeight {
-  key: string;
+  key: keyof ReturnType<typeof resolveMetrics>;
   label: string;
-  extract: (p: PublisherMetadata) => number | undefined;
   lowerIsBetter: boolean;
   weights: { branding: number; performance: number; balanced: number };
   /** If true, penalty is relaxed for video supply types */
@@ -90,23 +142,23 @@ const isVideoSupplyType = (p: PublisherMetadata): boolean => {
 };
 
 const EVAL_METRICS: MetricWeight[] = [
-  { key: 'a2cr', label: 'A2CR', extract: p => p.metadata?.avgAdsToContentRatio, lowerIsBetter: true,
+  { key: 'avgAdsToContentRatio', label: 'A2CR', lowerIsBetter: true,
     weights: { branding: 25, performance: 10, balanced: 15 }, min: 0, max: 1 },
-  { key: 'aiv', label: 'Ads in View', extract: p => p.metadata?.avgAdsInView, lowerIsBetter: true,
+  { key: 'avgAdsInView', label: 'Ads in View', lowerIsBetter: true,
     weights: { branding: 20, performance: 8, balanced: 12 }, min: 0, max: 30 },
-  { key: 'adr', label: 'Ad Refresh', extract: p => p.metadata?.avgAdRefresh, lowerIsBetter: false,
+  { key: 'avgAdRefresh', label: 'Ad Refresh', lowerIsBetter: false,
     weights: { branding: 10, performance: 5, balanced: 8 }, min: 0, max: 120 },
-  { key: 'pw', label: 'Page Weight', extract: p => p.metadata?.avgPageWeight, lowerIsBetter: true,
+  { key: 'avgPageWeight', label: 'Page Weight', lowerIsBetter: true,
     weights: { branding: 8, performance: 5, balanced: 8 }, min: 0, max: 20000, videoRelaxed: true },
-  { key: 'cpu', label: 'CPU Usage', extract: p => p.metadata?.avgCpu, lowerIsBetter: true,
+  { key: 'avgCpu', label: 'CPU Usage', lowerIsBetter: true,
     weights: { branding: 7, performance: 5, balanced: 7 }, min: 0, max: 5000, videoRelaxed: true },
-  { key: 'sp', label: 'Supply Paths', extract: p => p.metadata?.totalSupplyPaths, lowerIsBetter: true,
+  { key: 'totalSupplyPaths', label: 'Supply Paths', lowerIsBetter: true,
     weights: { branding: 5, performance: 20, balanced: 12 }, min: 0, max: 500 },
-  { key: 'rc', label: 'Reseller Count', extract: p => p.metadata?.resellerCount, lowerIsBetter: true,
+  { key: 'resellerCount', label: 'Reseller Count', lowerIsBetter: true,
     weights: { branding: 5, performance: 12, balanced: 8 }, min: 0, max: 300 },
-  { key: 'idar', label: 'ID Absorption Rate', extract: p => p.metadata?.idAbsorptionRate, lowerIsBetter: false,
+  { key: 'idAbsorptionRate', label: 'ID Absorption Rate', lowerIsBetter: false,
     weights: { branding: 10, performance: 25, balanced: 15 }, min: 0, max: 1 },
-  { key: 'gpids', label: 'Unique GPIDs', extract: p => p.metadata?.totalUniqueGpids, lowerIsBetter: false,
+  { key: 'totalUniqueGpids', label: 'Unique GPIDs', lowerIsBetter: false,
     weights: { branding: 5, performance: 5, balanced: 5 }, min: 0, max: 1000 },
 ];
 
@@ -126,14 +178,15 @@ export interface ScoredPublisher {
   metricScores: { key: string; label: string; raw: number | undefined; score: number; weight: number }[];
 }
 
-export function scorePublisher(p: PublisherMetadata, goal: CampaignGoal): ScoredPublisher {
+export function scorePublisher(p: PublisherMetadata, goal: CampaignGoal, device: DeviceTarget = 'overall'): ScoredPublisher {
   const isVideo = isVideoSupplyType(p);
+  const resolved = resolveMetrics(p, device);
   const metricScores: ScoredPublisher['metricScores'] = [];
   let weightedSum = 0;
   let totalWeight = 0;
 
   for (const m of EVAL_METRICS) {
-    const raw = m.extract(p);
+    const raw = resolved[m.key];
     const weight = m.weights[goal];
     if (raw == null) {
       metricScores.push({ key: m.key, label: m.label, raw: undefined, score: 50, weight });
@@ -225,13 +278,17 @@ export function buildEvaluationReport(
   scored: ScoredPublisher[],
   skippedDomains: string[],
   goal: CampaignGoal,
-  language: string
+  language: string,
+  device: DeviceTarget = 'overall'
 ): string {
   const L = LABELS[language] || LABELS.en;
   const sorted = [...scored].sort((a, b) => b.totalScore - a.totalScore);
 
   let md = `# ${L.title}\n\n`;
   md += `**${L.goal}:** ${goal}\n\n`;
+  if (device !== 'overall') {
+    md += `**Device:** ${device}\n\n`;
+  }
 
   // Ranking table
   md += `## Ranking\n\n`;

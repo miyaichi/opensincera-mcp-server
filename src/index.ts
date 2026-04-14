@@ -46,12 +46,14 @@ const GetPublisherByIdSchema = z.object({
 
 const ComparePublishersSchema = z.object({
   domain: z.string().min(1),
+  device: z.enum(['overall', 'mobile', 'desktop']).optional().default('overall'),
 });
 
 const EvaluateMediaSchema = z.object({
   domains: z.array(z.string().min(1)).min(1),
   campaignGoal: z.enum(['branding', 'performance', 'balanced']).optional().default('balanced'),
   language: z.enum(['en', 'ja']).optional().default('en'),
+  device: z.enum(['overall', 'mobile', 'desktop']).optional().default('overall'),
 });
 
 // Initialize OpenSincera service
@@ -134,13 +136,18 @@ Each metric includes detailed explanations of what it measures and its business 
       },
       {
         name: 'compare_publishers',
-        description: `Compare a publisher against its similar publishers (competitive benchmark). Retrieves the target publisher's data and its similar publishers, then generates a side-by-side comparison of key metrics: A2CR, Ads in View, Ad Refresh, Page Weight, CPU Usage, Supply Paths, Reseller Count, ID Absorption Rate, and Unique GPIDs.`,
+        description: `Compare a publisher against its similar publishers (competitive benchmark). Retrieves the target publisher's data and its similar publishers, then generates a side-by-side comparison of key metrics: A2CR, Ads in View, Ad Refresh, Page Weight, CPU Usage, Supply Paths, Reseller Count, ID Absorption Rate, and Unique GPIDs. Use the device parameter to compare using mobile or desktop specific metrics.`,
         inputSchema: {
           type: 'object',
           properties: {
             domain: {
               type: 'string',
               description: 'Your publisher domain to benchmark',
+            },
+            device: {
+              type: 'string',
+              enum: ['overall', 'mobile', 'desktop'],
+              description: 'Device type to use for metric comparison. Default: overall',
             },
           },
           required: ['domain'],
@@ -149,7 +156,7 @@ Each metric includes detailed explanations of what it measures and its business 
       },
       {
         name: 'evaluate_media',
-        description: `Evaluate and rank multiple publisher domains for advertiser media selection. Scores each publisher (0-100) based on ad quality metrics, supply chain health, and identity coverage. Supports campaign goal weighting (branding vs performance) and bilingual output (en/ja).`,
+        description: `Evaluate and rank multiple publisher domains for advertiser media selection. Scores each publisher (0-100) based on ad quality metrics, supply chain health, and identity coverage. Supports campaign goal weighting (branding vs performance), bilingual output (en/ja), and device-specific scoring (mobile/desktop).`,
         inputSchema: {
           type: 'object',
           properties: {
@@ -167,6 +174,11 @@ Each metric includes detailed explanations of what it measures and its business 
               type: 'string',
               enum: ['en', 'ja'],
               description: 'Output language. Default: en',
+            },
+            device: {
+              type: 'string',
+              enum: ['overall', 'mobile', 'desktop'],
+              description: 'Device type to use for metric scoring. Default: overall',
             },
           },
           required: ['domains'],
@@ -289,7 +301,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         if (peers.length === 0) {
           return { content: [{ type: 'text', text: `Could not retrieve any similar publisher data for ${input.domain}.` }] };
         }
-        const report = buildComparisonReport(self, peers);
+        const report = buildComparisonReport(self, peers, input.device);
         return { content: [{ type: 'text', text: report }] };
       }
 
@@ -302,7 +314,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const skipped: string[] = [];
         results.forEach((r, i) => {
           if (r.status === 'fulfilled' && r.value != null) {
-            scored.push(scorePublisher(r.value, input.campaignGoal));
+            scored.push(scorePublisher(r.value, input.campaignGoal, input.device));
           } else {
             skipped.push(input.domains[i]);
           }
@@ -310,7 +322,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         if (scored.length === 0) {
           return { content: [{ type: 'text', text: 'Could not retrieve data for any of the specified domains.' }] };
         }
-        const report = buildEvaluationReport(scored, skipped, input.campaignGoal, input.language);
+        const report = buildEvaluationReport(scored, skipped, input.campaignGoal, input.language, input.device);
         return { content: [{ type: 'text', text: report }] };
       }
 

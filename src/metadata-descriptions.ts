@@ -2,6 +2,7 @@
  * OpenSincera Publisher Metadata Field Descriptions
  * Extracted from adstxt-manager translations
  */
+import { DeviceLevelMetrics } from './opensincera-service.js';
 
 export interface FieldDescription {
   en: string;
@@ -98,8 +99,24 @@ export const metadataDescriptions: Record<string, FieldDescription> = {
     ja: 'このパブリッシャーを所有または管理する親エンティティの識別子。広告エコシステムにおける企業関係や所有構造を理解するのに役立ちます。',
   },
   similarPublishers: {
-    en: 'A curated list of publishers that OpenSincera considers similar to the current publisher, based on shared attributes (e.g., content category/editorial focus) and observed supply-side patterns.\n\nThis list is meant for contextual benchmarking—not a definitive competitor set. Use it to compare key signals across comparable publishers and to interpret a publisher’s metrics in a relevant market/content context.',
+    en: 'A curated list of publishers that OpenSincera considers similar to the current publisher, based on shared attributes (e.g., content category/editorial focus) and observed supply-side patterns.\n\nThis list is meant for contextual benchmarking—not a definitive competitor set. Use it to compare key signals across comparable publishers and to interpret a publisher\'s metrics in a relevant market/content context.',
     ja: 'OpenSincera が、コンテンツカテゴリ／編集方針などの属性や、サプライ側で観測される傾向（供給パターン）にもとづいて「類似」と判断したパブリッシャーの一覧です。\n\nこれは競合一覧の確定版ではなく、文脈的なベンチマークのためのリストです。近い特性を持つパブリッシャー群と Key Signals を比較し、対象パブリッシャーの指標を同じ市場・同じコンテンツ文脈で解釈するために使います。',
+  },
+  deviceAvgAdsToContentRatio: {
+    en: 'Device-level A2CR (Ads-to-Content Ratio): average percentage of the viewport dedicated to ads, broken down by mobile and desktop.',
+    ja: 'デバイス別 A2CR（広告対コンテンツ比率）：モバイルとデスクトップ別に計測した、ビューポートに占める広告の平均割合。',
+  },
+  deviceAvgAdUnitsInView: {
+    en: 'Device-level average number of ad units simultaneously visible in the viewport, broken down by mobile and desktop.',
+    ja: 'デバイス別の平均同時表示広告ユニット数（モバイル／デスクトップ別）。',
+  },
+  deviceAverageRefreshRate: {
+    en: 'Device-level average time in seconds before an ad unit refreshes, broken down by mobile and desktop.',
+    ja: 'デバイス別の平均広告リフレッシュ間隔（秒）（モバイル／デスクトップ別）。',
+  },
+  percentageOfAdSlotsWithRefresh: {
+    en: 'The percentage of ad slots on this publisher that have ad refresh enabled, per device type. High values indicate most inventory is subject to refresh.',
+    ja: '広告リフレッシュが有効な広告スロットの割合（デバイス別）。高い値はほとんどのインベントリがリフレッシュ対象であることを示します。',
   },
 };
 
@@ -300,6 +317,61 @@ export function formatPublisherWithDescriptions(
     if (metadata.resellerCount !== undefined) {
       lines.push(`### Reseller Count: ${metadata.resellerCount}`);
       lines.push(getFieldDescription('resellerCount', language));
+      lines.push('');
+    }
+  }
+
+  // Device-level metrics
+  if (publisher.deviceMetrics) {
+    const dm = publisher.deviceMetrics;
+    const mobile = dm.mobile as DeviceLevelMetrics | undefined;
+    const desktop = dm.desktop as DeviceLevelMetrics | undefined;
+    if (mobile || desktop) {
+      lines.push('## Device-Level Metrics');
+      lines.push('');
+
+      const fmt = (v: number | undefined, digits = 2, suffix = '') =>
+        v != null ? `${v.toFixed(digits)}${suffix}` : 'N/A';
+
+      // A2CR
+      lines.push('### Ads-to-Content Ratio (A2CR)');
+      lines.push(getFieldDescription('deviceAvgAdsToContentRatio', language));
+      lines.push('');
+      lines.push('| | Mobile | Desktop |');
+      lines.push('|---|---|---|');
+      lines.push(`| Avg | ${fmt(mobile?.avgAdsToContentRatio)} | ${fmt(desktop?.avgAdsToContentRatio)} |`);
+      lines.push(`| Max | ${fmt(mobile?.maxAdsToContentRatio)} | ${fmt(desktop?.maxAdsToContentRatio)} |`);
+      lines.push(`| Min | ${fmt(mobile?.minAdsToContentRatio)} | ${fmt(desktop?.minAdsToContentRatio)} |`);
+      lines.push('');
+
+      // Ads in View
+      lines.push('### Ads in View');
+      lines.push(getFieldDescription('deviceAvgAdUnitsInView', language));
+      lines.push('');
+      lines.push('| | Mobile | Desktop |');
+      lines.push('|---|---|---|');
+      lines.push(`| Avg | ${fmt(mobile?.avgAdUnitsInView, 1)} | ${fmt(desktop?.avgAdUnitsInView, 1)} |`);
+      lines.push(`| Max | ${fmt(mobile?.maxAdUnitsInView, 1)} | ${fmt(desktop?.maxAdUnitsInView, 1)} |`);
+      lines.push('');
+
+      // Ad Refresh
+      lines.push('### Ad Refresh Rate');
+      lines.push(getFieldDescription('deviceAverageRefreshRate', language));
+      lines.push('');
+      lines.push('| | Mobile | Desktop |');
+      lines.push('|---|---|---|');
+      lines.push(`| Avg (s) | ${fmt(mobile?.averageRefreshRate, 1)} | ${fmt(desktop?.averageRefreshRate, 1)} |`);
+      lines.push(`| Max (s) | ${fmt(mobile?.maxRefreshRate, 1)} | ${fmt(desktop?.maxRefreshRate, 1)} |`);
+      lines.push(`| Min (s) | ${fmt(mobile?.minRefreshRate, 1)} | ${fmt(desktop?.minRefreshRate, 1)} |`);
+      lines.push('');
+
+      // % slots with refresh
+      lines.push('### Ad Slots with Refresh');
+      lines.push(getFieldDescription('percentageOfAdSlotsWithRefresh', language));
+      lines.push('');
+      lines.push('| | Mobile | Desktop |');
+      lines.push('|---|---|---|');
+      lines.push(`| % | ${fmt(mobile?.percentageOfAdSlotsWithRefresh, 1, '%')} | ${fmt(desktop?.percentageOfAdSlotsWithRefresh, 1, '%')} |`);
       lines.push('');
     }
   }
